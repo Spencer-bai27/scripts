@@ -1,3 +1,16 @@
+Select Id, Name, CreatedDate, CreatedBy.Name from LabsActionPlans__ActionPlan__c where 
+LabsActionPlans__Account__c = null AND
+LabsActionPlans__Campaign__c = null AND
+LabsActionPlans__Case__c = null AND
+LabsActionPlans__Contact__c = null AND
+LabsActionPlans__Contract__c = null AND
+LabsActionPlans__Lead__c = null AND
+LabsActionPlans__Opportunity__c = null AND
+Enrollment_Change__c = null 
+
+have to identify the tasks related to the action plan tasks related to these action plans and figure out from 
+the who or what Id on them if I can update one of these fields
+
 // Query the Record Type
 RecordType rmTaskRecordType = [
     SELECT Id, SobjectType, Name 
