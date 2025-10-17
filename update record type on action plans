@@ -24,8 +24,9 @@ List<LabsActionPlans__APTask__c> apTasks = [
 List<Task> tasks = [
     SELECT Id, WhoId, WhatId 
     FROM Task 
-    WHERE LabsActionPlans__APTask__c IN :apTasks
+    WHERE LabsActionPlans__TaskAPTask__c IN :apTasks
 ];
+
 have to identify the tasks related to the action plan tasks related to these action plans and figure out from 
 the who or what Id on them if I can update one of these fields
 
