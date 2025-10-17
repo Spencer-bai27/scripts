@@ -1,13 +1,31 @@
-Select Id, Name, CreatedDate, CreatedBy.Name from LabsActionPlans__ActionPlan__c where 
-LabsActionPlans__Account__c = null AND
-LabsActionPlans__Campaign__c = null AND
-LabsActionPlans__Case__c = null AND
-LabsActionPlans__Contact__c = null AND
-LabsActionPlans__Contract__c = null AND
-LabsActionPlans__Lead__c = null AND
-LabsActionPlans__Opportunity__c = null AND
-Enrollment_Change__c = null 
+// Query Action Plans with no parent relationships
+List<LabsActionPlans__ActionPlan__c> actPlans = [
+    SELECT Id, Name, CreatedDate, CreatedBy.Name 
+    FROM LabsActionPlans__ActionPlan__c 
+    WHERE 
+        LabsActionPlans__Account__c = null AND
+        LabsActionPlans__Campaign__c = null AND
+        LabsActionPlans__Case__c = null AND
+        LabsActionPlans__Contact__c = null AND
+        LabsActionPlans__Contract__c = null AND
+        LabsActionPlans__Lead__c = null AND
+        LabsActionPlans__Opportunity__c = null AND
+        Enrollment_Change__c = null
+];
 
+// First, get the APTask records related to these Action Plans
+List<LabsActionPlans__APTask__c> apTasks = [
+    SELECT Id 
+    FROM LabsActionPlans__APTask__c 
+    WHERE LabsActionPlans__Action_Plan__c IN :actPlans
+];
+
+// Then query Tasks related to those APTasks
+List<Task> tasks = [
+    SELECT Id, WhoId, WhatId 
+    FROM Task 
+    WHERE LabsActionPlans__APTask__c IN :apTasks
+];
 have to identify the tasks related to the action plan tasks related to these action plans and figure out from 
 the who or what Id on them if I can update one of these fields
 
