@@ -15,13 +15,16 @@ List<LabsActionPlans__ActionPlan__c> actPlans = [
 
 // First, get the APTask records related to these Action Plans
 List<LabsActionPlans__APTask__c> apTasks = [
-    SELECT Id 
+    SELECT Id, CreatedDate, LastModifiedDate, LabsActionPlans__Action_Plan__r.LabsActionPlans__Description__c 
     FROM LabsActionPlans__APTask__c 
     WHERE LabsActionPlans__Action_Plan__c IN :actPlans
 ];
 
 System.debug(apTasks.size());
-System.debug(apTasks[0]);
+for(LabsActionPlans__APTask__c apT : apTasks){
+    System.debug(apt.Id + ' created' + apt.CreatedDate + ' lmd' + apt.LastModifiedDate + ' ' + apt.LabsActionPlans__Action_Plan__r.LabsActionPlans__Description__c );
+}
+
 
 // Then query Tasks related to those APTasks
 List<Task> tasks = [
