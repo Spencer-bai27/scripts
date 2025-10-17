@@ -1,0 +1,48 @@
+// Query the Record Type
+RecordType rmTaskRecordType = [
+    SELECT Id, SobjectType, Name 
+    FROM RecordType 
+    WHERE SobjectType = 'Task' AND Name = 'Resource Management' 
+    LIMIT 1
+];
+
+// Initialize the list properly
+List<LabsActionPlans__ActionPlanTemplate__c> updatedRMActionPlanTemplates = new List<LabsActionPlans__ActionPlanTemplate__c>();
+
+// Query all Action Plan Templates
+List<LabsActionPlans__ActionPlanTemplate__c> allRMActionPlanTemplates = [
+    SELECT Id, Name, LabsActionPlans__TaskRecordTypeID__c 
+    FROM LabsActionPlans__ActionPlanTemplate__c
+];
+
+// Update templates
+for(LabsActionPlans__ActionPlanTemplate__c apt : allRMActionPlanTemplates) {
+    apt.LabsActionPlans__TaskRecordTypeID__c = rmTaskRecordType.Id;
+    updatedRMActionPlanTemplates.add(apt); // Add the object, not just the Id
+}
+
+// Perform DML operation
+if(!updatedRMActionPlanTemplates.isEmpty()) {
+    update updatedRMActionPlanTemplates;
+}
+
+// Initialize the list properly
+List<LabsActionPlans__ActionPlan__c> updatedRMActionPlans = new List<LabsActionPlans__ActionPlan__c>();
+
+// Query related Action Plans
+List<LabsActionPlans__ActionPlan__c> allRMActionPlans = [
+    SELECT Id, Name, LabsActionPlans__Action_Plan_Template__c, LabsActionPlans__TaskRecordTypeID__c 
+    FROM LabsActionPlans__ActionPlan__c 
+    WHERE LabsActionPlans__Action_Plan_Template__c IN :allRMActionPlanTemplates
+];
+
+// Update action plans
+for(LabsActionPlans__ActionPlan__c ap : allRMActionPlans) {
+    ap.LabsActionPlans__TaskRecordTypeID__c = rmTaskRecordType.Id;
+    updatedRMActionPlans.add(ap);
+}
+
+// Perform DML operation
+if(!updatedRMActionPlans.isEmpty()) {
+    update updatedRMActionPlans;
+}
