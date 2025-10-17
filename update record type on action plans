@@ -20,6 +20,9 @@ List<LabsActionPlans__APTask__c> apTasks = [
     WHERE LabsActionPlans__Action_Plan__c IN :actPlans
 ];
 
+System.debug(apTasks.size());
+System.debug(apTasks[0]);
+
 // Then query Tasks related to those APTasks
 List<Task> tasks = [
     SELECT Id, WhoId, WhatId 
@@ -27,6 +30,7 @@ List<Task> tasks = [
     WHERE LabsActionPlans__TaskAPTask__c IN :apTasks  // Fixed field name
 ];
 
+System.debug(tasks.size());
 // Debug output with proper spacing
 for(Task ta : tasks) {
     System.debug('Id: ' + ta.Id + ' | WhoId: ' + ta.WhoId + ' | WhatId: ' + ta.WhatId);
