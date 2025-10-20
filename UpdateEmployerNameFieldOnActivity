@@ -1,0 +1,28 @@
+List<Task> martiTasks = 
+    [SELECT Id, Employer_Name__c, Subject, WhoId, WhatId 
+     FROM Task WHERE CreatedBy.Id = '005Ua00000Go3pnIAB' 
+     AND Employer_Name__c = null AND WhoId != null];
+
+Set<Id> memberContactIds = new Set<Id>();
+List<Task> updatedTasks = new List<Task>(); 
+
+for(Task currentTask : martiTasks){
+    memberContactIds.add(currentTask.WhoId); 
+}
+
+Map<Id, String> contactIdToAccountName = new Map<Id, String>();
+List<Contact> mbrContacts = 
+    [SELECT Id, Account.Client_Account__r.Name 
+     FROM Contact 
+     WHERE Id IN :memberContactIds];
+
+for (Contact mbrContact : mbrContacts) {
+    contactIdToAccountName.put(mbrContact.Id, mbrContact.Account.Client_Account__r.Name); 
+}
+
+for(Task t : martiTasks){ 
+    t.Employer_Name__c = contactIdToAccountName.get(t.WhoId);
+    updatedTasks.add(t);
+}
+
+update updatedTasks;
