@@ -1,4 +1,41 @@
 List<Enrollment_Change_Member__c> resOptMembers = 
+[SELECT Id, 
+    Enrollment_Change__r.CreatedBy.Name, 
+    Enrollment_Change__r.CreatedBy.Id, 
+    Enrollment_Change__r.Household_Account__r.CreatedById,
+    Enrollment_Change__r.Household_Account__r.Id, 
+    Enrollment_Change__r.Household_Account__r.CreatedBy.Name,
+    Enrollment_Change__r.Household_Opportunity__r.CreatedBy.Id,
+    Enrollment_Change__r.Household_Opportunity__r.Id,
+    Enrollment_Change__r.Household_Opportunity__r.CreatedBy.Name
+FROM Enrollment_Change_Member__c 
+WHERE Enrollment_Change__r.CreatedBy.Manager.Name like '%carole%'];
+
+List<String> mismatches = new List<String>();
+
+integer i = 0;
+for (Enrollment_Change_Member__c resOptMmbr : resOptMembers) {
+    if(resOptMmbr.Enrollment_Change__r.CreatedBy.Id != resOptMmbr.Enrollment_Change__r.Household_Account__r.CreatedById) {
+        i++;
+        mismatches.add( 'The resource option created by user does not align with the corresponding hh account owner. ' + ' Resource Option Member ' + resOptMmbr.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.CreatedBy.Name + ' Household Account ' + resOptMmbr.Enrollment_Change__r.Household_Account__r.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.Household_Account__r.CreatedBy.Name + '\n');
+        //System.debug('The resource option created by user does not align with the corresponding hh account owner. ' + ' Resource Option Member ' + resOptMmbr.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.CreatedBy.Name + ' Household Account ' + resOptMmbr.Enrollment_Change__r.Household_Account__r.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.Household_Account__r.CreatedBy.Name + '\n');
+    }
+}
+System.debug(i);
+//System.debug(mismatches);
+
+List<String> mismatches2 = new List<String>();
+
+integer j = 0;
+for (Enrollment_Change_Member__c resOptMmbr : resOptMembers) {
+    if(resOptMmbr.Enrollment_Change__r.CreatedBy.Id != resOptMmbr.Enrollment_Change__r.Household_Opportunity__r.CreatedBy.Id) {
+        j++;
+        mismatches2.add( 'The resource option created by user does not align with the hh Opportunity owner. ' + ' Resource Option Member ' + resOptMmbr.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.CreatedBy.Name + ' Household Opp ' + resOptMmbr.Enrollment_Change__r.Household_Opportunity__r.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.Household_Opportunity__r.CreatedBy.Name + '\n');
+        //System.debug('The resource option created by user does not align with the corresponding hh opportunity owner. ' + ' Resource Option Member ' + resOptMmbr.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.CreatedBy.Name + ' Household Opp ' + resOptMmbr.Enrollment_Change__r.Household_Opportunity__r.Id + ' created by ' + resOptMmbr.Enrollment_Change__r.Household_Opportunity__r.CreatedBy.Name + '\n');
+    }
+}
+
+System.debug(j);List<Enrollment_Change_Member__c> resOptMembers = 
 [SELECT Id, Enrollment_Change__r.CreatedBy.Name, Enrollment_Change__r.CreatedBy.Id, Enrollment_Change__r.Household_Account__r.CreatedById,
 Enrollment_Change__r.Household_Account__r.Id, Enrollment_Change__r.Household_Account__r.CreatedBy.Name
 FROM Enrollment_Change_Member__c 
