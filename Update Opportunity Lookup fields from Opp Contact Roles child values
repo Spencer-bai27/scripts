@@ -1,0 +1,89 @@
+List<Opportunity> allOpportunities = [
+
+  SELECT Id, Chubb_BDM__c, Chubb_RVP__c, Producer__c, Chubb_AM__c,
+
+  (SELECT Id, ContactId, Role
+
+   FROM OpportunityContactRoles
+
+   WHERE Role IN ('Chubb BDM', 'Chubb RVP', 'Producer', 'Chubb AM'))
+
+  FROM Opportunity 
+
+];
+
+
+
+List<Opportunity> updatedOpportunities = new List<Opportunity>();
+
+Set<Id> processedOpportunities = new Set<Id>();
+
+
+
+for(Opportunity currentOpportunity : allOpportunities){
+
+  Boolean opportunityUpdated = false;
+
+  for(OpportunityContactRole OCR : currentOpportunity.OpportunityContactRoles){
+
+    if(OCR.Role == 'Chubb BDM'){
+
+      currentOpportunity.Chubb_BDM__c = OCR.ContactId;
+
+      opportunityUpdated = true;
+
+    }
+
+    else if(OCR.Role == 'Chubb RVP'){
+
+      currentOpportunity.Chubb_RVP__c = OCR.ContactId;
+
+      opportunityUpdated = true;
+
+    }
+
+    else if(OCR.Role == 'Producer'){
+
+      currentOpportunity.Producer__c = OCR.ContactId;
+
+      opportunityUpdated = true;
+
+    }
+
+    else if(OCR.Role == 'Chubb AM'){
+
+      currentOpportunity.Chubb_AM__c = OCR.ContactId;
+
+      opportunityUpdated = true;
+
+    }
+
+  }
+
+   
+
+  // Only add to update list once per opportunity and only if changes were made
+
+  if(opportunityUpdated && !processedOpportunities.contains(currentOpportunity.Id)){
+
+    updatedOpportunities.add(currentOpportunity);
+
+    processedOpportunities.add(currentOpportunity.Id);
+
+  }
+
+}
+
+
+
+System.debug(processedOpportunities);
+
+
+
+// Only perform update if there are records to update
+
+if(!updatedOpportunities.isEmpty()){
+
+  update updatedOpportunities;
+
+}
