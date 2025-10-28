@@ -1,0 +1,79 @@
+Set<Id> taskIds = new Set<Id>();
+List<Task> allTasks = new List<Task>();
+
+// Query 1
+for(Task t : [SELECT Id, Subject, Type, TaskSubtype, rcsfl__call_start_time__c, 
+               rcsfl__call_end_time__c, CallDurationInSeconds
+               FROM Task
+               WHERE Account.Client_Account__c = '001Ua00000LbkM0IAJ']) {
+    if(!taskIds.contains(t.Id)) {
+        taskIds.add(t.Id);
+        allTasks.add(t);
+    }
+}
+
+// Query 2
+for(Task t : [SELECT Id, Subject, Type, TaskSubtype, rcsfl__call_start_time__c, 
+               rcsfl__call_end_time__c, CallDurationInSeconds
+               FROM Task
+               WHERE WhatId IN (SELECT Id FROM Enrollment_Change__c 
+                               WHERE Household_Account__r.Client_Account__c = '001Ua00000LbkM0IAJ')]) {
+    if(!taskIds.contains(t.Id)) {
+        taskIds.add(t.Id);
+        allTasks.add(t);
+    }
+}
+
+// Calculate metrics
+Integer emailCount = 0;
+Integer textCount = 0;
+Integer callCount = 0;
+Decimal totalCallSeconds = 0;
+
+for(Task t : allTasks) {
+    // Count Emails
+    if(t.Type == 'Email' || t.TaskSubtype == 'Email') {
+        emailCount++;
+    }
+    
+    // Count Texts/SMS
+    if(t.TaskSubtype == 'Message' || 
+       (t.Subject != null && (t.Subject.containsIgnoreCase('SMS') || 
+                              t.Subject.containsIgnoreCase('Text')))) {
+        textCount++;
+    }
+    
+    // Count Calls and sum duration
+    if(t.Type == 'Call' || t.TaskSubtype == 'Call') {
+        callCount++;
+        if(t.CallDurationInSeconds != null) {
+            totalCallSeconds += t.CallDurationInSeconds;
+        }
+    }
+}
+
+// Convert to minutes and hours
+Decimal totalCallMinutes = totalCallSeconds / 60;
+Decimal totalCallHours = totalCallSeconds / 3600;
+
+// Output results
+System.debug('===== TOUCH METRICS =====');
+System.debug('Total Tasks: ' + allTasks.size());
+System.debug('Emails: ' + emailCount);
+System.debug('Texts/SMS: ' + textCount);
+System.debug('Phone Calls: ' + callCount);
+System.debug('Total Call Duration: ' + totalCallMinutes.setScale(2) + ' minutes (' + totalCallHours.setScale(2) + ' hours)');
+System.debug('========================');
+
+/*```
+
+## Sample Output
+```
+===== TOUCH METRICS =====
+Total Tasks: 247
+Emails: 85
+Texts/SMS: 42
+Phone Calls: 120
+Total Call Duration: 3456.67 minutes (57.61 hours)
+========================
+*/
