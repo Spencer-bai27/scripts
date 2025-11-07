@@ -1,0 +1,41 @@
+List<Opportunity> oppList = [
+    SELECT Id, 
+           Name, 
+           Broker__c,
+           Broker__r.Name,
+           Account.Id,
+           Account.Name, 
+           Account.Broker__c,
+           Account.Broker__r.Name 
+    FROM Opportunity 
+    WHERE Broker__c != null
+];
+
+List<Account> updateAccountsWithBrokers = new List<Account>();
+String emailBody = 'Broker Mismatches Found:\n\n';
+Integer mismatchCount = 0;
+
+for(Opportunity currentOpp : oppList){
+    if((currentOpp.Broker__c != currentOpp.Account.Broker__c) && currentOpp.Account.Broker__c != null){
+        mismatchCount++;
+        emailBody += 'Account Name: ' + currentOpp.Account.Name +
+                    ' | Account Id: ' + currentOpp.Account.Id + 
+                    ' | Account Broker: ' + currentOpp.Account.Broker__r.Name +
+                    ' | Opportunity Name: ' + currentOpp.Name +
+                    ' | Opportunity Id: ' + currentOpp.Id + 
+                    ' | Opportunity Broker: ' + currentOpp.Broker__r.Name + '\n\n';
+    }    
+}
+
+// Send email if mismatches found
+if(mismatchCount > 0){
+    Messaging.SingleEmailMessage mail = new Messaging.SingleEmailMessage();
+    mail.setToAddresses(new String[] { UserInfo.getUserEmail() });
+    mail.setSubject('Broker Mismatch Report - ' + mismatchCount + ' Records Found');
+    mail.setPlainTextBody(emailBody);
+    
+    Messaging.sendEmail(new Messaging.SingleEmailMessage[] { mail });
+    System.debug('Email sent to ' + UserInfo.getUserEmail() + ' with ' + mismatchCount + ' mismatches');
+} else {
+    System.debug('No broker mismatches found');
+}
