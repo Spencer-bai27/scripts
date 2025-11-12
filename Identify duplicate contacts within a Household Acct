@@ -1,0 +1,99 @@
+// Query all Member contacts with relevant fields
+List<Contact> members = [
+    SELECT Id, Name, AccountId, Client_Account__c, 
+           Social_Security_Number__c, Email, Other_Email__c, 
+           Personal_Email__c, Birthdate
+    FROM Contact 
+    WHERE RecordType.DeveloperName = 'Member'
+    AND (AccountId != null AND Client_Account__c != null)
+    AND Client_Account__c = '001Ua00000E628oIAB'
+];
+
+System.debug('Total Member Contacts: ' + members.size());
+
+// Map to group contacts by AccountId + Client_Account__c
+Map<String, List<Contact>> groupedContacts = new Map<String, List<Contact>>();
+
+for (Contact c : members) {
+    String groupKey = String.valueOf(c.AccountId) + '_' + String.valueOf(c.Client_Account__c);
+    
+    if (!groupedContacts.containsKey(groupKey)) {
+        groupedContacts.put(groupKey, new List<Contact>());
+    }
+    groupedContacts.get(groupKey).add(c);
+}
+
+// Find duplicates within each group
+Integer duplicateGroupCount = 0;
+Integer totalDuplicateContacts = 0;
+
+for (String groupKey : groupedContacts.keySet()) {
+    List<Contact> groupMembers = groupedContacts.get(groupKey);
+    
+    // Only check groups with 2+ contacts
+    if (groupMembers.size() < 2) {
+        continue;
+    }
+    
+    // Compare each contact with others in the group
+    Set<Id> duplicatesFound = new Set<Id>();
+    
+    for (Integer i = 0; i < groupMembers.size(); i++) {
+        for (Integer j = i + 1; j < groupMembers.size(); j++) {
+            Contact c1 = groupMembers[i];
+            Contact c2 = groupMembers[j];
+            
+            // Check if any identifying field matches
+            Boolean isDuplicate = false;
+            List<String> matchingFields = new List<String>();
+            
+            if (String.isNotBlank(c1.Social_Security_Number__c) && 
+                c1.Social_Security_Number__c == c2.Social_Security_Number__c) {
+                isDuplicate = true;
+                matchingFields.add('SSN');
+            }
+            
+            if (String.isNotBlank(c1.Email) && c1.Email == c2.Email) {
+                isDuplicate = true;
+                matchingFields.add('Email');
+            }
+            
+            if (String.isNotBlank(c1.Other_Email__c) && c1.Other_Email__c == c2.Other_Email__c) {
+                isDuplicate = true;
+                matchingFields.add('Other_Email');
+            }
+            
+            if (String.isNotBlank(c1.Personal_Email__c) && c1.Personal_Email__c == c2.Personal_Email__c) {
+                isDuplicate = true;
+                matchingFields.add('Personal_Email');
+            }
+            
+            if (c1.Birthdate != null && c1.Birthdate == c2.Birthdate) {
+                isDuplicate = true;
+                matchingFields.add('Birthdate');
+            }
+            
+            if (isDuplicate) {
+                duplicatesFound.add(c1.Id);
+                duplicatesFound.add(c2.Id);
+                
+                System.debug('=== DUPLICATE FOUND ===');
+                System.debug('Contact 1: ' + c1.Name + ' (' + c1.Id + ')');
+                System.debug('Contact 2: ' + c2.Name + ' (' + c2.Id + ')');
+                System.debug('Matching Fields: ' + String.join(matchingFields, ', '));
+                System.debug('AccountId: ' + c1.AccountId);
+                System.debug('Client_Account__c: ' + c1.Client_Account__c);
+                System.debug('=======================');
+            }
+        }
+    }
+    
+    if (!duplicatesFound.isEmpty()) {
+        duplicateGroupCount++;
+        totalDuplicateContacts += duplicatesFound.size();
+    }
+}
+
+System.debug('\n=== SUMMARY ===');
+System.debug('Total groups with duplicates: ' + duplicateGroupCount);
+System.debug('Total duplicate contacts: ' + totalDuplicateContacts);
