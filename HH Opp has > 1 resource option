@@ -1,0 +1,14 @@
+// Get the count and see which records
+AggregateResult[] results = [
+    SELECT Household_Opportunity__c, COUNT(Id) childCount
+    FROM Enrollment_Change__c 
+    WHERE Household_Opportunity__c != null
+    GROUP BY Household_Opportunity__c 
+    HAVING COUNT(Id) >= 2
+];
+
+System.debug('Total: ' + results.size());
+for (AggregateResult ar : results) {
+    System.debug('Household: ' + ar.get('Household_Opportunity__c') + 
+                 ' has ' + ar.get('childCount') + ' children');
+}
