@@ -1,0 +1,88 @@
+// Query to find Household_Evaluation__c records without children
+List<Household_Evaluation__c> parentRecordsWithoutChildren = [
+    SELECT Id, Name, Household_Account__c
+    FROM Household_Evaluation__c
+    WHERE Id NOT IN (
+        SELECT Household_Evaluation__c 
+        FROM Household_Evaluation_Member__c 
+        WHERE Household_Evaluation__c != null
+    )
+    AND Household_Account__c != null
+];
+
+if (parentRecordsWithoutChildren.isEmpty()) {
+    System.debug('No Household_Evaluation__c records found without children.');
+    return;
+}
+
+// Build a Set of Account IDs and a Map from Account ID to Household_Evaluation__c ID
+Set<Id> accountIds = new Set<Id>();
+Map<Id, Id> accountToHouseholdEvalMap = new Map<Id, Id>();
+
+for (Household_Evaluation__c he : parentRecordsWithoutChildren) {
+    accountIds.add(he.Household_Account__c);
+    accountToHouseholdEvalMap.put(he.Household_Account__c, he.Id);
+}
+
+// Query Contacts related to those Accounts
+List<Contact> relatedContacts = [
+    SELECT Id, Name, AccountId
+    FROM Contact
+    WHERE AccountId IN :accountIds
+];
+
+System.debug('relatedContacts' + relatedContacts);
+
+// Create Household_Evaluation_Member__c records
+List<Household_Evaluation_Member__c> membersToInsert = new List<Household_Evaluation_Member__c>();
+
+for (Contact con : relatedContacts) {
+    Household_Evaluation_Member__c member = new Household_Evaluation_Member__c();
+    member.Household_Evaluation__c = accountToHouseholdEvalMap.get(con.AccountId);
+    member.Contact__c = con.Id; // Update with your actual Contact lookup field name
+    // Add any other required fields here
+    
+    membersToInsert.add(member);
+}
+
+System.debug('membersToInsert' + membersToInsert);
+
+// Insert the records
+Integer recordsCreated = 0;
+if (!membersToInsert.isEmpty()) {
+    insert membersToInsert;
+    recordsCreated = membersToInsert.size();
+}
+
+// Prepare email
+Messaging.SingleEmailMessage mail = new Messaging.SingleEmailMessage();
+mail.setToAddresses(new String[] { 'spencer.stierhoff@benefitsallin.com' }); // Update with your email
+mail.setSubject('Household Evaluation Members Created - ' + System.now().format());
+
+// Build email body
+String emailBody = 'Script Results:\n';
+emailBody += '========================================\n';
+emailBody += 'Household_Evaluation__c records without children: ' + parentRecordsWithoutChildren.size() + '\n';
+emailBody += 'Contacts found: ' + relatedContacts.size() + '\n';
+emailBody += 'Household_Evaluation_Member__c records created: ' + recordsCreated + '\n\n';
+
+emailBody += 'Details:\n';
+emailBody += '========================================\n';
+
+for (Household_Evaluation__c he : parentRecordsWithoutChildren) {
+    emailBody += 'Household Evaluation: ' + he.Name + ' (ID: ' + he.Id + ')\n';
+    emailBody += '  Account: ' + he.Household_Account__c + '\n';
+    
+    Integer contactCount = 0;
+    for (Contact con : relatedContacts) {
+        if (con.AccountId == he.Household_Account__c) {
+            contactCount++;
+        }
+    }
+    emailBody += '  Contacts found: ' + contactCount + '\n\n';
+}
+
+mail.setPlainTextBody(emailBody);
+
+// Send email
+Messaging.sendEmail(new Messaging.SingleEmailMessage[] { mail });
