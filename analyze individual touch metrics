@@ -1,0 +1,134 @@
+Set<Id> taskIds = new Set<Id>();
+Set<Id> eventIds = new Set<Id>();
+List<Task> allTasks = new List<Task>();
+List<Event> allEvents = new List<Event>();
+
+// ===== TASK QUERIES =====
+// Query 1: Tasks via Account relationship
+for(Task t : [SELECT Id, Subject, Type, TaskSubtype, rcsfl__call_start_time__c, 
+               rcsfl__call_end_time__c, CallDurationInSeconds
+               FROM Task
+               WHERE CreatedBy.Name like '%Annemarie%']) {
+    if(!taskIds.contains(t.Id)) {
+        taskIds.add(t.Id);
+        allTasks.add(t);
+    }
+}
+
+// Query 2: Tasks via WhatId (Enrollment Changes)
+for(Task t : [SELECT Id, Subject, Type, TaskSubtype, rcsfl__call_start_time__c, 
+               rcsfl__call_end_time__c, CallDurationInSeconds
+               FROM Task
+               WHERE WhatId IN (SELECT Id FROM Enrollment_Change__c 
+                               WHERE CreatedBy.Name like '%Annemarie%')]) {
+    if(!taskIds.contains(t.Id)) {
+        taskIds.add(t.Id);
+        allTasks.add(t);
+    }
+}
+
+// Query 3: Tasks via WhoId (Contacts)
+for(Task t : [SELECT Id, Subject, Type, TaskSubtype, rcsfl__call_start_time__c, 
+               rcsfl__call_end_time__c, CallDurationInSeconds
+               FROM Task
+               WHERE WhoId IN (SELECT Id FROM Contact 
+                               WHERE CreatedBy.Name like '%Annemarie%')]) {
+    if(!taskIds.contains(t.Id)) {
+        taskIds.add(t.Id);
+        allTasks.add(t);
+    }
+}
+
+// ===== EVENT QUERIES =====
+// Query 4: Events via Account relationship
+for(Event e : [SELECT Id, Subject, Type, DurationInMinutes
+               FROM Event
+               WHERE CreatedBy.Name like '%Annemarie%']) {
+    if(!eventIds.contains(e.Id)) {
+        eventIds.add(e.Id);
+        allEvents.add(e);
+    }
+}
+
+// Query 5: Events via WhatId (Enrollment Changes)
+for(Event e : [SELECT Id, Subject, Type, DurationInMinutes
+               FROM Event
+               WHERE WhatId IN (SELECT Id FROM Enrollment_Change__c 
+                               WHERE CreatedBy.Name like '%Annemarie%')]) {
+    if(!eventIds.contains(e.Id)) {
+        eventIds.add(e.Id);
+        allEvents.add(e);
+    }
+}
+
+// Query 6: Events via WhoId (Contacts)
+for(Event e : [SELECT Id, Subject, Type, DurationInMinutes
+               FROM Event
+               WHERE WhoId IN (SELECT Id FROM Contact 
+                               WHERE CreatedBy.Name like '%Annemarie%')]) {
+    if(!eventIds.contains(e.Id)) {
+        eventIds.add(e.Id);
+        allEvents.add(e);
+    }
+}
+
+// ===== CALCULATE METRICS =====
+Integer emailCount = 0;
+Integer textCount = 0;
+Integer callCount = 0;
+Integer meetingCount = 0;
+Decimal totalCallSeconds = 0;
+
+// Process Tasks
+for(Task t : allTasks) {
+    // Count Emails
+    if(t.Type == 'Email' || t.TaskSubtype == 'Email') {
+        emailCount++;
+    }
+    
+    // Count Texts/SMS
+    if(t.TaskSubtype == 'Message' || 
+       (t.Subject != null && (t.Subject.containsIgnoreCase('SMS') || 
+                              t.Subject.containsIgnoreCase('Text')))) {
+        textCount++;
+    }
+    
+    // Count Calls and sum duration
+    if(t.Type == 'Call' || t.TaskSubtype == 'Call') {
+        callCount++;
+        if(t.CallDurationInSeconds != null) {
+            totalCallSeconds += t.CallDurationInSeconds;
+        }
+    }
+}
+
+// Process Events
+for(Event e : allEvents) {
+    // Count Events as calls if Type is 'Call', otherwise as meetings
+    if(e.Type == 'Call') {
+        callCount++;
+        if(e.DurationInMinutes != null) {
+            totalCallSeconds += (e.DurationInMinutes * 60); // Convert minutes to seconds
+        }
+    } else {
+        meetingCount++;
+    }
+}
+
+// Convert to minutes and hours
+Decimal totalCallMinutes = totalCallSeconds / 60;
+Decimal totalCallHours = totalCallSeconds / 3600;
+
+// Output results
+System.debug('===== TOUCH METRICS =====');
+System.debug('Total Tasks: ' + allTasks.size());
+System.debug('Total Events: ' + allEvents.size());
+System.debug('Total Activities: ' + (allTasks.size() + allEvents.size()));
+System.debug('---');
+System.debug('Emails: ' + emailCount);
+System.debug('Texts/SMS: ' + textCount);
+System.debug('Phone Calls: ' + callCount);
+System.debug('Meetings: ' + meetingCount);
+System.debug('---');
+System.debug('Total Call Duration: ' + totalCallMinutes.setScale(2) + ' minutes (' + totalCallHours.setScale(2) + ' hours)');
+System.debug('========================');
