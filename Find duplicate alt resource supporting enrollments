@@ -1,0 +1,64 @@
+// Set your Account ID
+Id accountId = '001Ua00000LTHiyIAH';
+
+// Query all enrollments (same logic as selectSupportingMemberDetails)
+String query =
+    'SELECT Alternative_Resource_Type__c, Contact__r.Id, Contact__r.Name, Contact__r.Claim_Report_Amount__c, ' +
+    'Contact__r.Claim_Amount__c, Contact__c, Effective_Date__c, Cobra_Eligible_Through__c, Contact__r.Account.Owner.Name, ' +
+    'Contact__r.AccountId, Contact__r.Account.Name, Contact__r.Terminated_Date__c, Contact__r.Relationship_to_Primary__c, ' +
+    'Contact__r.Current_Annual_Reporting_Value__r.Reason__c, Contact__r.Current_Annual_Reporting_Value__r.Description__c ' +
+    'FROM Enrollment__c ' +
+    'WHERE Client_Account__c = :accountId ' +
+    'AND Contact__r.Lifecycle__c = \'Supporting\' ' +
+    'AND RecordType.DeveloperName = \'Alternative_Resource\' ' +
+    'ORDER BY Contact__c, Effective_Date__c ASC NULLS LAST';
+
+Map<String, Object> bindMap = new Map<String, Object>{'accountId' => accountId};
+List<Enrollment__c> allEnrollments = Database.queryWithBinds(query, bindMap, AccessLevel.USER_MODE);
+
+System.debug('========================================');
+System.debug('TOTAL ENROLLMENTS FOUND: ' + allEnrollments.size());
+System.debug('========================================');
+
+// Display all enrollments
+for(Enrollment__c e : allEnrollments) {
+    System.debug('All Enrollments -> Contact: ' + e.Contact__r.Name + 
+                 ' | Contact ID: ' + e.Contact__c + 
+                 ' | Effective Date: ' + e.Effective_Date__c +
+                 ' | Enrollment ID: ' + e.Id);
+}
+
+System.debug('\n========================================');
+System.debug('APPLYING getEarliestEnrollmentPerContact()');
+System.debug('========================================\n');
+
+// Apply the getEarliestEnrollmentPerContact method
+List<Enrollment__c> earliestEnrollments = new List<Enrollment__c>();
+Set<Id> processedContacts = new Set<Id>();
+
+if (allEnrollments != null && !allEnrollments.isEmpty()) {
+    for (Enrollment__c enrollment : allEnrollments) {
+        if (enrollment.Contact__c != null && !processedContacts.contains(enrollment.Contact__c)) {
+            earliestEnrollments.add(enrollment);
+            processedContacts.add(enrollment.Contact__c);
+        }
+    }
+}
+
+System.debug('EARLIEST ENROLLMENTS RETURNED: ' + earliestEnrollments.size());
+System.debug('========================================');
+
+// Display earliest enrollments only
+for(Enrollment__c e : earliestEnrollments) {
+    System.debug('Earliest Enrollment -> Contact: ' + e.Contact__r.Name + 
+                 ' | Contact ID: ' + e.Contact__c + 
+                 ' | Effective Date: ' + e.Effective_Date__c +
+                 ' | Enrollment ID: ' + e.Id);
+}
+
+System.debug('\n========================================');
+System.debug('SUMMARY');
+System.debug('========================================');
+System.debug('Total Enrollments: ' + allEnrollments.size());
+System.debug('Unique Contacts (Earliest Only): ' + earliestEnrollments.size());
+System.debug('Records Filtered Out: ' + (allEnrollments.size() - earliestEnrollments.size()));
