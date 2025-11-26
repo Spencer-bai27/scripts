@@ -1,20 +1,59 @@
+// As of 11/26/2025 at 3:55PM in the full Sandbox, this successfully updated 4339 action plans and failed on 420 // Step 1: Update templates (should work fine)
+List<LabsActionPlans__ActionPlanTemplate__c> lapt = [
+    SELECT Id, Name, LabsActionPlans__TaskRecordTypeID__c 
+    FROM LabsActionPlans__ActionPlanTemplate__c 
+    WHERE Id IN (
+        'a04Ua0000057kUgIAI',
+        'a04Ua0000057lH5IAI',
+        'a04Ua0000057nSXIAY',
+        'a04Ua0000057nU9IAI',
+        'a04Ua0000057nXNIAY',
+        'a04Ua0000057nYzIAI',
+        'a04Ua0000057nfRIAQ',
+        'a04Ua0000057nh3IAA',
+        'a04Ua0000057nkHIAQ',
+        'a04Ua0000057nltIAA',
+        'a04Ua000007xKwNIAU'
+    )
+];
 
-List<LabsActionPlans__ActionPlanTemplate__c> lapt = [SELECT Id, Name, LabsActionPlans__TaskRecordTypeID__c FROM LabsActionPlans__ActionPlanTemplate__c where ID IN ('a04Ua0000057kUgIAI',
-'a04Ua0000057lH5IAI',
-'a04Ua0000057nSXIAY',
-'a04Ua0000057nU9IAI',
-'a04Ua0000057nXNIAY',
-'a04Ua0000057nYzIAI',
-'a04Ua0000057nfRIAQ',
-'a04Ua0000057nh3IAA',
-'a04Ua0000057nkHIAQ',
-'a04Ua0000057nltIAA',
-'a04Ua000007xKwNIAU')];
-
-List<LabsActionPlans__ActionPlanTemplate__c> updated = new List<LabsActionPlans__ActionPlanTemplate__c>();
-
-for(LabsActionPlans__ActionPlanTemplate__c current : lapt ){
+for(LabsActionPlans__ActionPlanTemplate__c current : lapt) {
     current.LabsActionPlans__TaskRecordTypeID__c = '012VC000002mfNtYAI';
-    updated.add(current);
 }
-update updated;
+update lapt;
+
+// Step 2: Update Action Plans with error handling
+List<LabsActionPlans__ActionPlan__c> actionPlans = [
+    SELECT Id, 
+           LabsActionPlans__Action_Plan_Template__c, 
+           LabsActionPlans__TaskRecordTypeID__c
+    FROM LabsActionPlans__ActionPlan__c
+    WHERE LabsActionPlans__Action_Plan_Template__c IN :lapt
+];
+
+System.debug('Found ' + actionPlans.size() + ' Action Plans to update');
+
+for(LabsActionPlans__ActionPlan__c ap : actionPlans) {
+    ap.LabsActionPlans__TaskRecordTypeID__c = '012VC000002mfNtYAI';
+}
+
+// Use Database.update with allOrNone = false to see which fail
+Database.SaveResult[] results = Database.update(actionPlans, false);
+
+Integer successCount = 0;
+Integer failCount = 0;
+
+for(Integer i = 0; i < results.size(); i++) {
+    if(results[i].isSuccess()) {
+        successCount++;
+    } else {
+        failCount++;
+        System.debug('FAILED: Action Plan ' + actionPlans[i].Id);
+        for(Database.Error err : results[i].getErrors()) {
+            System.debug('Error: ' + err.getMessage());
+            System.debug('Fields: ' + err.getFields());
+        }
+    }
+}
+
+System.debug('Success: ' + successCount + ', Failed: ' + failCount);
