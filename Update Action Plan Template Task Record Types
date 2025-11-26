@@ -1,0 +1,20 @@
+
+List<LabsActionPlans__ActionPlanTemplate__c> lapt = [SELECT Id, Name, LabsActionPlans__TaskRecordTypeID__c FROM LabsActionPlans__ActionPlanTemplate__c where ID IN ('a04Ua0000057kUgIAI',
+'a04Ua0000057lH5IAI',
+'a04Ua0000057nSXIAY',
+'a04Ua0000057nU9IAI',
+'a04Ua0000057nXNIAY',
+'a04Ua0000057nYzIAI',
+'a04Ua0000057nfRIAQ',
+'a04Ua0000057nh3IAA',
+'a04Ua0000057nkHIAQ',
+'a04Ua0000057nltIAA',
+'a04Ua000007xKwNIAU')];
+
+List<LabsActionPlans__ActionPlanTemplate__c> updated = new List<LabsActionPlans__ActionPlanTemplate__c>();
+
+for(LabsActionPlans__ActionPlanTemplate__c current : lapt ){
+    current.LabsActionPlans__TaskRecordTypeID__c = '012VC000002mfNtYAI';
+    updated.add(current);
+}
+update updated;
