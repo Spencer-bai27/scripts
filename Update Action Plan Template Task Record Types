@@ -57,3 +57,232 @@ for(Integer i = 0; i < results.size(); i++) {
 }
 
 System.debug('Success: ' + successCount + ', Failed: ' + failCount);
+
+
+
+
+
+////////////
+
+
+// Query the Action Plans related to your templates
+List<LabsActionPlans__ActionPlanTemplate__c> lapt = [
+    SELECT Id 
+    FROM LabsActionPlans__ActionPlanTemplate__c 
+    WHERE Id IN (
+        'a04Ua0000057kUgIAI',
+        'a04Ua0000057lH5IAI',
+        'a04Ua0000057nSXIAY',
+        'a04Ua0000057nU9IAI',
+        'a04Ua0000057nXNIAY',
+        'a04Ua0000057nYzIAI',
+        'a04Ua0000057nfRIAQ',
+        'a04Ua0000057nh3IAA',
+        'a04Ua0000057nkHIAQ',
+        'a04Ua0000057nltIAA',
+        'a04Ua000007xKwNIAU'
+    )
+];
+
+// Query all Action Plans with full relationship details
+List<LabsActionPlans__ActionPlan__c> actionPlans = [
+    SELECT Id,
+           Name,
+           LabsActionPlans__Action_Plan_Template__c,
+           LabsActionPlans__Action_Plan_Template__r.Name,
+           LabsActionPlans__TaskRecordTypeID__c,
+           LabsActionPlans__Account__c,
+           LabsActionPlans__Campaign__c,
+           LabsActionPlans__Case__c,
+           LabsActionPlans__Contact__c,
+           LabsActionPlans__Contract__c,
+           LabsActionPlans__Lead__c,
+           LabsActionPlans__Opportunity__c,
+           CreatedDate,
+           LastModifiedDate
+    FROM LabsActionPlans__ActionPlan__c
+    WHERE LabsActionPlans__Action_Plan_Template__c IN :lapt
+    AND LabsActionPlans__TaskRecordTypeID__c != '012VC000002mfNtYAI'
+];
+
+System.debug('Total Action Plans to analyze: ' + actionPlans.size());
+
+// Prepare for update
+for(LabsActionPlans__ActionPlan__c ap : actionPlans) {
+    ap.LabsActionPlans__TaskRecordTypeID__c = '012VC000002mfNtYAI';
+}
+
+// Attempt update with detailed error tracking
+Database.SaveResult[] results = Database.update(actionPlans, false);
+
+// Create detailed failure report
+List<String> failureReport = new List<String>();
+failureReport.add('ACTION PLAN UPDATE FAILURE REPORT');
+failureReport.add('=====================================');
+failureReport.add('');
+
+Integer successCount = 0;
+Integer failCount = 0;
+Map<String, Integer> errorTypeCounts = new Map<String, Integer>();
+Map<String, List<Id>> errorTypeToIds = new Map<String, List<Id>>();
+
+for(Integer i = 0; i < results.size(); i++) {
+    if(results[i].isSuccess()) {
+        successCount++;
+    } else {
+        failCount++;
+        LabsActionPlans__ActionPlan__c failedAP = actionPlans[i];
+        
+        // Count relationships
+        Integer relatedObjectCount = 0;
+        List<String> relatedObjects = new List<String>();
+        
+        if(failedAP.LabsActionPlans__Account__c != null) {
+            relatedObjectCount++;
+            relatedObjects.add('Account: ' + failedAP.LabsActionPlans__Account__c);
+        }
+        if(failedAP.LabsActionPlans__Campaign__c != null) {
+            relatedObjectCount++;
+            relatedObjects.add('Campaign: ' + failedAP.LabsActionPlans__Campaign__c);
+        }
+        if(failedAP.LabsActionPlans__Case__c != null) {
+            relatedObjectCount++;
+            relatedObjects.add('Case: ' + failedAP.LabsActionPlans__Case__c);
+        }
+        if(failedAP.LabsActionPlans__Contact__c != null) {
+            relatedObjectCount++;
+            relatedObjects.add('Contact: ' + failedAP.LabsActionPlans__Contact__c);
+        }
+        if(failedAP.LabsActionPlans__Contract__c != null) {
+            relatedObjectCount++;
+            relatedObjects.add('Contract: ' + failedAP.LabsActionPlans__Contract__c);
+        }
+        if(failedAP.LabsActionPlans__Lead__c != null) {
+            relatedObjectCount++;
+            relatedObjects.add('Lead: ' + failedAP.LabsActionPlans__Lead__c);
+        }
+        if(failedAP.LabsActionPlans__Opportunity__c != null) {
+            relatedObjectCount++;
+            relatedObjects.add('Opportunity: ' + failedAP.LabsActionPlans__Opportunity__c);
+        }
+        
+        // Build detailed failure entry
+        failureReport.add('-------------------------------------------');
+        failureReport.add('Action Plan ID: ' + failedAP.Id);
+        failureReport.add('Name: ' + failedAP.Name);
+        failureReport.add('Template: ' + failedAP.LabsActionPlans__Action_Plan_Template__r.Name);
+        failureReport.add('Created Date: ' + failedAP.CreatedDate);
+        failureReport.add('Related Object Count: ' + relatedObjectCount);
+        
+        if(relatedObjectCount == 0) {
+            failureReport.add('ISSUE: No related objects found (orphaned Action Plan)');
+        } else if(relatedObjectCount > 1) {
+            failureReport.add('ISSUE: Multiple related objects found');
+        }
+        
+        if(!relatedObjects.isEmpty()) {
+            failureReport.add('Related To:');
+            for(String rel : relatedObjects) {
+                failureReport.add('  - ' + rel);
+            }
+        }
+        
+        failureReport.add('Errors:');
+        for(Database.Error err : results[i].getErrors()) {
+            String errorMsg = err.getMessage();
+            failureReport.add('  - ' + errorMsg);
+            failureReport.add('    Status Code: ' + err.getStatusCode());
+            failureReport.add('    Fields: ' + err.getFields());
+            
+            // Track error types
+            String errorKey = String.valueOf(err.getStatusCode()) + ': RelCount=' + relatedObjectCount;
+            if(!errorTypeCounts.containsKey(errorKey)) {
+                errorTypeCounts.put(errorKey, 0);
+                errorTypeToIds.put(errorKey, new List<Id>());
+            }
+            errorTypeCounts.put(errorKey, errorTypeCounts.get(errorKey) + 1);
+            errorTypeToIds.get(errorKey).add(failedAP.Id);
+        }
+        
+        failureReport.add('');
+    }
+}
+
+// Summary section
+failureReport.add('');
+failureReport.add('=====================================');
+failureReport.add('SUMMARY');
+failureReport.add('=====================================');
+failureReport.add('Total Processed: ' + actionPlans.size());
+failureReport.add('Successful: ' + successCount);
+failureReport.add('Failed: ' + failCount);
+failureReport.add('');
+failureReport.add('ERROR TYPE BREAKDOWN:');
+for(String errorType : errorTypeCounts.keySet()) {
+    failureReport.add('  ' + errorType + ': ' + errorTypeCounts.get(errorType) + ' occurrences');
+    failureReport.add('    Sample IDs: ' + String.join(errorTypeToIds.get(errorType).subList(0, Math.min(10, errorTypeToIds.get(errorType).size())), ', '));
+}
+
+// Convert report to single string
+String emailBody = String.join(failureReport, '\n');
+
+// Send email
+Messaging.SingleEmailMessage email = new Messaging.SingleEmailMessage();
+email.setToAddresses(new String[]{'spencer.stierhoff@benefitsallin.com'});
+email.setSubject('Action Plan Update Failure Report - ' + failCount + ' Failures');
+email.setPlainTextBody(emailBody);
+
+// Also create CSV attachment for easy analysis
+String csvContent = 'ActionPlanId,Name,Template,RelatedObjectCount,HasAccount,HasCampaign,HasCase,HasContact,HasContract,HasLead,HasOpportunity,ErrorMessage,StatusCode\n';
+
+for(Integer i = 0; i < results.size(); i++) {
+    if(!results[i].isSuccess()) {
+        LabsActionPlans__ActionPlan__c failedAP = actionPlans[i];
+        
+        Integer relatedCount = 0;
+        if(failedAP.LabsActionPlans__Account__c != null) relatedCount++;
+        if(failedAP.LabsActionPlans__Campaign__c != null) relatedCount++;
+        if(failedAP.LabsActionPlans__Case__c != null) relatedCount++;
+        if(failedAP.LabsActionPlans__Contact__c != null) relatedCount++;
+        if(failedAP.LabsActionPlans__Contract__c != null) relatedCount++;
+        if(failedAP.LabsActionPlans__Lead__c != null) relatedCount++;
+        if(failedAP.LabsActionPlans__Opportunity__c != null) relatedCount++;
+        
+        String errorMsg = '';
+        String statusCode = '';
+        for(Database.Error err : results[i].getErrors()) {
+            errorMsg = err.getMessage().replace(',', ';').replace('"', '""');
+            statusCode = String.valueOf(err.getStatusCode());
+        }
+        
+        csvContent += String.join(new List<String>{
+            failedAP.Id,
+            '"' + (failedAP.Name != null ? failedAP.Name.replace('"', '""') : '') + '"',
+            '"' + (failedAP.LabsActionPlans__Action_Plan_Template__r.Name != null ? failedAP.LabsActionPlans__Action_Plan_Template__r.Name.replace('"', '""') : '') + '"',
+            String.valueOf(relatedCount),
+            String.valueOf(failedAP.LabsActionPlans__Account__c != null),
+            String.valueOf(failedAP.LabsActionPlans__Campaign__c != null),
+            String.valueOf(failedAP.LabsActionPlans__Case__c != null),
+            String.valueOf(failedAP.LabsActionPlans__Contact__c != null),
+            String.valueOf(failedAP.LabsActionPlans__Contract__c != null),
+            String.valueOf(failedAP.LabsActionPlans__Lead__c != null),
+            String.valueOf(failedAP.LabsActionPlans__Opportunity__c != null),
+            '"' + errorMsg + '"',
+            statusCode
+        }, ',') + '\n';
+    }
+}
+
+// Create CSV attachment
+Messaging.EmailFileAttachment csvAttachment = new Messaging.EmailFileAttachment();
+csvAttachment.setFileName('ActionPlan_Failures.csv');
+csvAttachment.setBody(Blob.valueOf(csvContent));
+csvAttachment.setContentType('text/csv');
+
+email.setFileAttachments(new Messaging.EmailFileAttachment[]{csvAttachment});
+
+// Send the email
+Messaging.sendEmail(new Messaging.SingleEmailMessage[]{email});
+
+System.debug('Email sent successfully to spencer.stierhoff@benefitsallin.com');
+System.debug('Success: ' + successCount + ', Failed: ' + failCount);
